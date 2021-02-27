@@ -37,6 +37,9 @@ namespace Otocyon {
 			Task ReadyHandler() {
 				ready.Set();
 				Client.Ready -= ReadyHandler; // Unsubscribe self
+
+				Client.SetGameAsync($"Otocyon {Program.Version}");
+				
 				return Task.CompletedTask;
 			}
 			Client.Ready += ReadyHandler;
@@ -49,17 +52,18 @@ namespace Otocyon {
 		}
 
 		public async ValueTask DisposeAsync() {
-			var loggedOut = new ManualResetEvent(false);
+			var disconnected = new ManualResetEvent(false);
 
-			Task LoggedOutHandler() {
-				loggedOut.Set();
-				Client.LoggedOut -= LoggedOutHandler;
+			Task DisconnectedHandler(Exception? ex) {
+				Client.Disconnected -= DisconnectedHandler;
+				disconnected.Set();
 				return Task.CompletedTask;
 			}
-			Client.LoggedOut += LoggedOutHandler;
-			await Client.LogoutAsync();
+
+			Client.Disconnected += DisconnectedHandler;
+			await Client.StopAsync();
+			disconnected.WaitOne();
 			Client.Dispose();
-			loggedOut.WaitOne();
 		}
 	}
 }
